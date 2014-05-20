@@ -1,0 +1,49 @@
+task wrapper(type: Wrapper) {
+    gradleVersion = 1.12
+}
+
+apply plugin: 'scala'
+apply plugin: 'idea'
+apply plugin: 'maven'
+
+repositories {
+    mavenCentral()
+}
+
+ext {
+    scalaVersion = "2.11.0"
+    springVersion = "4.0.2.RELEASE"
+}
+
+configurations {
+    deployerJars
+}
+
+dependencies {
+    deployerJars("org.apache.maven.wagon:wagon-http:2.2")
+
+    compile("org.scala-lang:scala-library:$scalaVersion")
+    compile("org.springframework:spring-context:$springVersion")
+    compile("com.typesafe:config:1.2.0")
+}
+
+task sourcesJar(type: Jar) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+}
+
+artifacts {
+    archives sourcesJar
+}
+
+uploadArchives {
+    repositories {
+        mavenDeployer {
+            configuration = configurations.deployerJars
+            repository(url: artifactoryUrl) {
+                authentication(userName: artifactoryUser, password: artifactoryPassword)
+            }
+        }
+    }
+}
+
