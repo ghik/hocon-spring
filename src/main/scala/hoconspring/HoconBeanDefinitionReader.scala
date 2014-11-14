@@ -1,21 +1,23 @@
 package hoconspring
 
 import java.{lang => jl, util => ju}
-import org.springframework.beans.factory.support._
-import org.springframework.core.io.Resource
+
 import com.typesafe.config._
+import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.beans.factory.config.ConstructorArgumentValues.ValueHolder
+import org.springframework.beans.factory.config.{BeanDefinitionHolder, ConstructorArgumentValues, RuntimeBeanNameReference, RuntimeBeanReference}
+import org.springframework.beans.factory.support._
+import org.springframework.beans.{MutablePropertyValues, PropertyValue}
+import org.springframework.core.io.Resource
+
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
-import org.springframework.beans.{MutablePropertyValues, PropertyValue}
-import org.springframework.beans.factory.config.{BeanDefinitionHolder, RuntimeBeanNameReference, ConstructorArgumentValues, RuntimeBeanReference}
-import org.springframework.beans.factory.config.ConstructorArgumentValues.ValueHolder
-import org.springframework.beans.factory.annotation.Qualifier
 
 class HoconBeanDefinitionReader(registry: BeanDefinitionRegistry)
   extends AbstractBeanDefinitionReader(registry) {
 
-  import AttrNames._
-  import ConfigValueType._
+  import com.typesafe.config.ConfigValueType._
+  import hoconspring.AttrNames._
 
   private implicit class ConfigValueExtensions(value: ConfigValue) {
     def as[T: HoconType] =
@@ -36,8 +38,8 @@ class HoconBeanDefinitionReader(registry: BeanDefinitionRegistry)
   }
 
   private def iterate(obj: ConfigObject)
-    (attrFun: (String, ConfigValue) => Any)
-    (propFun: (String, ConfigValue) => Any) = {
+                     (attrFun: (String, ConfigValue) => Any)
+                     (propFun: (String, ConfigValue) => Any) = {
 
     obj.foreach {
       case (key, _) if key.startsWith("_") =>
@@ -47,9 +49,9 @@ class HoconBeanDefinitionReader(registry: BeanDefinitionRegistry)
   }
 
   private def validateObj(required: Set[String] = Set.empty,
-    requiredAny: Set[String] = Set.empty,
-    allowed: Set[String] = Set.empty,
-    props: Boolean = false)(obj: ConfigObject) {
+                          requiredAny: Set[String] = Set.empty,
+                          allowed: Set[String] = Set.empty,
+                          props: Boolean = false)(obj: ConfigObject) {
     require(required.forall(obj.containsKey),
       s"Attributes ${required.mkString(", ")} must be present in object at ${obj.origin.description}")
     require(requiredAny.isEmpty || requiredAny.exists(obj.containsKey),
@@ -132,7 +134,7 @@ class HoconBeanDefinitionReader(registry: BeanDefinitionRegistry)
     setup(new ManagedList[Any]) { list =>
       list.addAll(obj.get(ListAttr).as[ConfigList].map(read))
       list.setMergeEnabled(obj.get(MergeAttr).as[Option[Boolean]].getOrElse(false))
-      list.setElementTypeName(obj.get(ValueTypeAttr).as[Option[String]].getOrElse(null))
+      list.setElementTypeName(obj.get(ValueTypeAttr).as[Option[String]].orNull)
     }
   }
 
@@ -151,7 +153,7 @@ class HoconBeanDefinitionReader(registry: BeanDefinitionRegistry)
     setup(new ManagedSet[Any]) { set =>
       set.addAll(obj.get(SetAttr).as[ConfigList].map(read))
       set.setMergeEnabled(obj.get(MergeAttr).as[Option[Boolean]].getOrElse(false))
-      set.setElementTypeName(obj.get(ValueTypeAttr).as[Option[String]].getOrElse(null))
+      set.setElementTypeName(obj.get(ValueTypeAttr).as[Option[String]].orNull)
     }
   }
 
@@ -165,8 +167,8 @@ class HoconBeanDefinitionReader(registry: BeanDefinitionRegistry)
     validateObj(allowed = Set(MergeAttr, KeyTypeAttr, ValueTypeAttr, EntriesAttr), props = true)(obj)
     setup(new ManagedMap[Any, Any]) { mm =>
       mm.setMergeEnabled(obj.get(MergeAttr).as[Option[Boolean]].getOrElse(false))
-      mm.setKeyTypeName(obj.get(KeyTypeAttr).as[Option[String]].getOrElse(null))
-      mm.setValueTypeName(obj.get(ValueTypeAttr).as[Option[String]].getOrElse(null))
+      mm.setKeyTypeName(obj.get(KeyTypeAttr).as[Option[String]].orNull)
+      mm.setValueTypeName(obj.get(ValueTypeAttr).as[Option[String]].orNull)
       obj.get(EntriesAttr).as[Option[ConfigList]].getOrElse(ju.Collections.emptyList).foreach {
         case obj: ConfigObject =>
           validateObj(required = Set(KeyAttr, ValueAttr))(obj)
@@ -200,7 +202,7 @@ class HoconBeanDefinitionReader(registry: BeanDefinitionRegistry)
     val propertyValues = new MutablePropertyValues
     bd.setConstructorArgumentValues(cargs)
     bd.setPropertyValues(propertyValues)
-    bd.setResourceDescription(obj.origin.filename)
+    bd.setResourceDescription(obj.origin.description)
 
     obj.get(AbstractAttr).as[Option[Boolean]].foreach(bd.setAbstract)
     obj.get(AutowireCandidateAttr).as[Option[Boolean]].foreach(bd.setAutowireCandidate)
@@ -288,18 +290,17 @@ class HoconBeanDefinitionReader(registry: BeanDefinitionRegistry)
 
   private def readBeans(obj: ConfigObject) = {
     validateObj(props = true)(obj)
-    val props = getProps(obj)
-    props.foreach {
+    val beanDefs = getProps(obj).iterator.flatMap {
       case (key, value) =>
-        val bd = try {
-          readBean(value.as[ConfigObject])
+        try {
+          value.as[Option[ConfigObject]].map(obj => (key, readBean(obj)))
         } catch {
           case e: Exception => throw new RuntimeException(
             s"Could not read definition of bean $key at ${value.origin.description}", e)
         }
-        registry.registerBeanDefinition(key, bd)
-    }
-    props.size
+    }.toVector
+    beanDefs.foreach((registry.registerBeanDefinition _).tupled)
+    beanDefs.size
   }
 
   private def readAliases(obj: ConfigObject) {

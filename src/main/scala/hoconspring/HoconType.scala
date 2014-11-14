@@ -1,9 +1,10 @@
 package hoconspring
 
 import java.{lang => jl, util => ju}
+
 import com.typesafe.config._
+
 import scala.collection.JavaConverters._
-import scala.Some
 
 trait HoconType[T] {
 
@@ -22,7 +23,7 @@ trait HoconType[T] {
 
 object HoconType {
 
-  import ConfigValueType._
+  import com.typesafe.config.ConfigValueType._
 
   implicit object anyHoconType extends HoconType[Any] {
     def get(value: ConfigValue) =
@@ -101,7 +102,7 @@ object HoconType {
     }
   }
 
-  implicit def listHoconType[T: HoconType] = new HoconType[ju.List[T]] {
+  implicit def listHoconType[T: HoconType]: HoconType[ju.List[T]] = new HoconType[ju.List[T]] {
     def get(value: ConfigValue) = {
       requireType(LIST, value)
       val elementHoconType = implicitly[HoconType[T]]
@@ -109,7 +110,7 @@ object HoconType {
     }
   }
 
-  implicit def mapHoconType[T: HoconType] = new HoconType[ju.Map[String, T]] {
+  implicit def mapHoconType[T: HoconType]: HoconType[ju.Map[String, T]] = new HoconType[ju.Map[String, T]] {
     def get(value: ConfigValue) = {
       requireType(OBJECT, value)
       val elementHoconType = implicitly[HoconType[T]]
@@ -119,7 +120,7 @@ object HoconType {
     }
   }
 
-  implicit def optionHoconType[T: HoconType] = new HoconType[Option[T]] {
+  implicit def optionHoconType[T: HoconType]: HoconType[Option[T]] = new HoconType[Option[T]] {
     def get(value: ConfigValue): Option[T] =
       if (value == null || value.valueType == NULL) None
       else Some(implicitly[HoconType[T]].get(value))
