@@ -306,7 +306,7 @@ class HoconBeanDefinitionReader(registry: BeanDefinitionRegistry)
   private def readAliases(obj: ConfigObject) {
     validateObj(props = true)(obj)
     getProps(obj).foreach {
-      case (key, value) => registry.registerAlias(key, value.as[String])
+      case (key, value) => value.as[Option[String]].foreach(registry.registerAlias(_, key))
     }
   }
 
