@@ -2,7 +2,7 @@ hocon-spring
 ============
 
 An implementation of [BeanDefinitionReader](http://docs.spring.io/spring/docs/4.0.2.RELEASE/javadoc-api/org/springframework/beans/factory/support/BeanDefinitionReader.html)
-that is able to parse [HOCON](https://github.com/typesafehub/config/blob/master/HOCON.md) files.
+that is able to parse [HOCON](https://github.com/typesafehub/config/blob/master/HOCON.md) (Typesafe Config) files.
 
 This effectively allows you to define your Spring application context entirely in HOCON, which gives you following advantages over XML:
 
