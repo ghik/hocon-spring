@@ -1,6 +1,6 @@
 name := "hocon-spring"
 organization := "hocon-spring"
-version := "0.9"
+version := "0.9.1"
 
 scalaVersion := "2.11.7"
 crossPaths := false
