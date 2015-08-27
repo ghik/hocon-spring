@@ -2,50 +2,54 @@ hocon-spring
 ============
 
 An implementation of [BeanDefinitionReader](http://docs.spring.io/spring/docs/4.0.2.RELEASE/javadoc-api/org/springframework/beans/factory/support/BeanDefinitionReader.html)
-that is able to parse [HOCON](https://github.com/typesafehub/config/blob/master/HOCON.md) files.
+that is able to parse [HOCON](https://github.com/typesafehub/config/blob/master/HOCON.md) (Typesafe Config) files.
 
-This effectively allows you to define your Spring application context entirely in HOCON.
+This effectively allows you to define your Spring application context entirely in HOCON, which gives you following advantages over XML:
+
+* easy customization and overriding thanks to HOCON merging features
+* overall much easier reuse of configuration fragments
+* cleaner, more concise syntax
 
 Example:
 
     beans {
-        someAbstractBean {
-            %abstract = true
+      someAbstractBean {
+        %abstract = true
     
-            settings {
-                inherited = 32
-            }
-            characters.%set = [a, g, o]
+        settings {
+          inherited = 32
         }
+        characters.%set = [a, g, o]
+      }
     
-        someBean {
-            %class = com.example.SomeBeanClass
-            %parent = someAbstractBean
+      someBean {
+        %class = com.example.SomeBeanClass
+        %parent = someAbstractBean
     
-            someNumberProperty = 42
-            someStringProperty = someStringValue
-            settings {
-                %merge = true
-                someSetting = 5
-                anotherSetting = 20
-            }
-            numbers = [1, 2, 3, 4, 5]
-            characters {
-                %merge = true
-                %set = [a, b, c, d]
-            }
-            nestedBean {
-                %class = com.example.SomeOtherBeanClass
-    
-                otherNestedBean.%ref = otherBean
-            }
+        someNumberProperty = 42
+        someStringProperty = someStringValue
+        settings {
+          %merge = true
+          someSetting = 5
+          anotherSetting = 20
         }
-    
-        otherBean {
-            %class = com.example.YetAnotherBeanClass
-    
-            someRandomProperty = someRandomString
+        numbers = [1, 2, 3, 4, 5]
+        characters {
+          %merge = true
+          %set = [a, b, c, d]
         }
+        nestedBean {
+          %class = com.example.SomeOtherBeanClass
+    
+          otherNestedBean.%ref = otherBean
+        }
+      }
+    
+      otherBean {
+        %class = com.example.YetAnotherBeanClass
+    
+        someRandomProperty = someRandomString
+      }
     }
 
 An equivalent XML would be:
@@ -115,3 +119,10 @@ An equivalent XML would be:
       </bean>
     
     </beans>
+
+How to create application context from HOCON files in Java:
+
+    GenericApplicationContext ctx = new GenericApplicationContext();
+    HoconBeanDefinitionReader bdr = new HoconBeanDefinitionReader(ctx);
+    bdr.loadBeanDefinitions("/beans.conf");
+    ctx.refresh();
