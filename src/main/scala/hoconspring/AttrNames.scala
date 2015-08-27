@@ -1,6 +1,7 @@
 package hoconspring
 
 import java.{util => ju, lang => jl}
+import com.github.ghik.silencer.silent
 import org.springframework.beans.factory.support.AbstractBeanDefinition
 
 /**
@@ -45,6 +46,7 @@ object AttrNames {
   final val TypeAttr = "%type"
   final val ValueAttr = "%value"
   final val ValueTypeAttr = "%value-type"
+  final val ConfigAttr = "%config"
 
   final val BeanAttrs = Set(
     AbstractAttr,
@@ -74,7 +76,7 @@ object AttrNames {
     "byName" -> AbstractBeanDefinition.AUTOWIRE_BY_NAME,
     "byType" -> AbstractBeanDefinition.AUTOWIRE_BY_TYPE,
     "constructor" -> AbstractBeanDefinition.AUTOWIRE_CONSTRUCTOR,
-    "autodetect" -> AbstractBeanDefinition.AUTOWIRE_AUTODETECT
+    "autodetect" -> AbstractBeanDefinition.AUTOWIRE_AUTODETECT: @silent
   )
 
   final val ReverseAutowireMapping = AutowireMapping.map(_.swap)

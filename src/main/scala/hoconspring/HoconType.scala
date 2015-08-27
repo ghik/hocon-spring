@@ -13,7 +13,7 @@ trait HoconType[T] {
     value
   }
 
-  protected def requireType(requiredType: ConfigValueType, value: ConfigValue) {
+  protected def requireType(requiredType: ConfigValueType, value: ConfigValue): Unit = {
     requireNonNull(value)
     require(value.valueType == requiredType, s"Value at ${value.origin} has type, ${value.valueType}, required $requiredType")
   }

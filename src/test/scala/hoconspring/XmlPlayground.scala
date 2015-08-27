@@ -1,14 +1,14 @@
 package hoconspring
 
-import org.springframework.beans.factory.xml.XmlBeanDefinitionReader
-import org.springframework.beans.factory.support.SimpleBeanDefinitionRegistry
+import com.typesafe.config.ConfigFactory
+import org.springframework.context.support.GenericApplicationContext
 
 object XmlPlayground {
-  def main(args: Array[String]) {
-    val bdr = new SimpleBeanDefinitionRegistry
-    val reader = new XmlBeanDefinitionReader(bdr)
-    reader.loadBeanDefinitions("/beans.xml")
+  def main(args: Array[String]): Unit = {
+    val ctx = new GenericApplicationContext
+    val reader = new HoconBeanDefinitionReader(ctx)
+    reader.loadBeanDefinitions(ConfigFactory.load("bean2").withFallback(ConfigFactory.load("bean1")).resolve())
 
-    println(bdr.getBeanDefinition("bin").getPropertyValues.get("propz"))
+    ctx.refresh()
   }
 }

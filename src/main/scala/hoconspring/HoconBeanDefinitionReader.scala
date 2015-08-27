@@ -39,19 +39,17 @@ class HoconBeanDefinitionReader(registry: BeanDefinitionRegistry)
 
   private def iterate(obj: ConfigObject)
                      (attrFun: (String, ConfigValue) => Any)
-                     (propFun: (String, ConfigValue) => Any) = {
-
+                     (propFun: (String, ConfigValue) => Any) =
     obj.foreach {
       case (key, _) if key.startsWith("_") =>
       case (key, value) if key.startsWith("%") => attrFun(key, value)
       case (key, value) => propFun(key, value)
     }
-  }
 
   private def validateObj(required: Set[String] = Set.empty,
                           requiredAny: Set[String] = Set.empty,
                           allowed: Set[String] = Set.empty,
-                          props: Boolean = false)(obj: ConfigObject) {
+                          props: Boolean = false)(obj: ConfigObject): Unit = {
     require(required.forall(obj.containsKey),
       s"Attributes ${required.mkString(", ")} must be present in object at ${obj.origin.description}")
     require(requiredAny.isEmpty || requiredAny.exists(obj.containsKey),
@@ -101,6 +99,8 @@ class HoconBeanDefinitionReader(registry: BeanDefinitionRegistry)
 
   private object BeanNameReference extends ObjectWithAttributePresentExtractor(IdrefAttr)
 
+  private object RawConfig extends ObjectWithAttributePresentExtractor(ConfigAttr)
+
   private def read(value: ConfigValue): Any = value match {
     case BeanDefinition(obj) =>
       val bd = readBean(obj)
@@ -114,6 +114,7 @@ class HoconBeanDefinitionReader(registry: BeanDefinitionRegistry)
     case ListDefinition(obj) => readList(obj)
     case SetDefinition(obj) => readSet(obj)
     case PropertiesDefinition(obj) => readProperties(obj)
+    case RawConfig(obj) => readRawConfig(obj)
     case obj: ConfigObject => readMap(obj)
     case list: ConfigList => readRawList(list)
     case _ => value.unwrapped
@@ -192,6 +193,11 @@ class HoconBeanDefinitionReader(registry: BeanDefinitionRegistry)
         case entry => throw new IllegalArgumentException(s"Bad prop definition at ${entry.getValue.origin.description}")
       }
     }
+  }
+
+  private def readRawConfig(obj: ConfigObject) = {
+    validateObj(required = Set(ConfigAttr))(obj)
+    obj.get(ConfigAttr).as[Config]
   }
 
   private def readBean(obj: ConfigObject) = {
@@ -303,7 +309,7 @@ class HoconBeanDefinitionReader(registry: BeanDefinitionRegistry)
     beanDefs.size
   }
 
-  private def readAliases(obj: ConfigObject) {
+  private def readAliases(obj: ConfigObject): Unit = {
     validateObj(props = true)(obj)
     getProps(obj).foreach {
       case (key, value) => value.as[Option[String]].foreach(registry.registerAlias(_, key))
