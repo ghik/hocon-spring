@@ -1,5 +1,5 @@
 name := "hocon-spring"
-organization := "com.avsystem"
+organization := "hocon-spring"
 version := "0.9"
 
 scalaVersion := "2.11.7"
