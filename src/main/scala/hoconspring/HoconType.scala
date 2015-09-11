@@ -5,6 +5,7 @@ import java.{lang => jl, util => ju}
 import com.typesafe.config._
 
 import scala.collection.JavaConverters._
+import scala.util.{Failure, Success, Try}
 
 trait HoconType[T] {
 
@@ -124,6 +125,21 @@ object HoconType {
     def get(value: ConfigValue): Option[T] =
       if (value == null || value.valueType == NULL) None
       else Some(implicitly[HoconType[T]].get(value))
+  }
+
+  implicit def eitherHoconType[A: HoconType, B: HoconType]: HoconType[Either[A, B]] = new HoconType[Either[A, B]] {
+    def get(value: ConfigValue): Either[A, B] = {
+      val leftTry = Try(implicitly[HoconType[A]].get(value))
+      val rightTry = Try(implicitly[HoconType[B]].get(value))
+
+      (leftTry, rightTry) match {
+        case (Failure(left), Failure(right)) =>
+          throw new IllegalArgumentException("Could not parse config value as one of two types:\n" +
+            left.getMessage + "\n" + right.getMessage)
+        case (Success(left), _) => Left(left)
+        case (_, Success(right)) => Right(right)
+      }
+    }
   }
 
 }

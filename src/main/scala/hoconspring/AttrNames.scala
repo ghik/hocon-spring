@@ -15,6 +15,7 @@ object AttrNames {
   final val AutowireAttr = "%autowire"
   final val AutowireCandidateAttr = "%autowire-candidate"
   final val ClassAttr = "%class"
+  final val ConstructAttr = "%construct"
   final val ConstructorArgsAttr = "%constructor-args"
   final val DependencyCheckAttr = "%dependency-check"
   final val DependsOnAttr = "%depends-on"
@@ -53,6 +54,7 @@ object AttrNames {
     AutowireAttr,
     AutowireCandidateAttr,
     ClassAttr,
+    ConstructAttr,
     ConstructorArgsAttr,
     DependencyCheckAttr,
     DependsOnAttr,

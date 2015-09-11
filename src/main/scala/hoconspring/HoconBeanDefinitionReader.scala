@@ -201,8 +201,6 @@ class HoconBeanDefinitionReader(registry: BeanDefinitionRegistry)
   }
 
   private def readBean(obj: ConfigObject) = {
-    validateObj(requiredAny = BeanAttrs, props = true)(obj)
-
     val bd = new GenericBeanDefinition
     val cargs = new ConstructorArgumentValues
     val propertyValues = new MutablePropertyValues
@@ -210,15 +208,16 @@ class HoconBeanDefinitionReader(registry: BeanDefinitionRegistry)
     bd.setPropertyValues(propertyValues)
     bd.setResourceDescription(obj.origin.description)
 
+    def addConstructorArg(idxAndValue: (Option[Int], ValueHolder)) = idxAndValue match {
+      case (Some(idx), valueHolder) => cargs.addIndexedArgumentValue(idx, valueHolder)
+      case (None, valueHolder) => cargs.addGenericArgumentValue(valueHolder)
+    }
+
     obj.get(AbstractAttr).as[Option[Boolean]].foreach(bd.setAbstract)
     obj.get(AutowireCandidateAttr).as[Option[Boolean]].foreach(bd.setAutowireCandidate)
     obj.get(AutowireAttr).as[Option[String]].map(autowireMapping).foreach(bd.setAutowireMode)
     obj.get(ClassAttr).as[Option[String]].foreach(bd.setBeanClassName)
-    val constructorArgs = obj.get(ConstructorArgsAttr).as[Option[ConfigList]].getOrElse(ju.Collections.emptyList)
-    constructorArgs.iterator.map(readConstructorArg).foreach {
-      case (Some(index), valueHolder) => cargs.addIndexedArgumentValue(index, valueHolder)
-      case (None, valueHolder) => cargs.addGenericArgumentValue(valueHolder)
-    }
+    readConstructorArgs(obj.get(ConstructorArgsAttr)).foreach(addConstructorArg)
     obj.get(DependencyCheckAttr).as[Option[String]].map(dependencyCheckMapping).foreach(bd.setDependencyCheck)
     obj.get(DescriptionAttr).as[Option[String]].foreach(bd.setDescription)
     obj.get(DestroyMethodAttr).as[Option[String]].foreach(bd.setDestroyMethodName)
@@ -246,10 +245,15 @@ class HoconBeanDefinitionReader(registry: BeanDefinitionRegistry)
     }
     obj.get(ScopeAttr).as[Option[String]].foreach(bd.setScope)
 
+    val construct = obj.get(ConstructAttr).as[Option[Boolean]].getOrElse(false)
     getProps(obj).foreach {
-      case (key, value) => propertyValues.addPropertyValue(readPropertyValue(key, value))
+      case (key, value) =>
+        if (construct) {
+          addConstructorArg(readConstructorArg(value, Some(key)))
+        } else {
+          propertyValues.addPropertyValue(readPropertyValue(key, value))
+        }
     }
-
     bd
   }
 
@@ -270,12 +274,28 @@ class HoconBeanDefinitionReader(registry: BeanDefinitionRegistry)
     replaceOverride
   }
 
-  private def readConstructorArg(value: ConfigValue) = value match {
+  private def readConstructorArgs(value: ConfigValue) = {
+    value.as[Option[Either[ConfigList, ConfigObject]]] match {
+      case Some(Left(list)) =>
+        list.iterator.asScala.map(configValue => readConstructorArg(configValue))
+      case Some(Right(obj)) =>
+        validateObj(props = true)(obj)
+        getProps(obj).iterator.map { case (name, configValue) =>
+          val (idxOpt, holder) = readConstructorArg(configValue)
+          holder.setName(name)
+          (idxOpt, holder)
+        }
+      case None =>
+        Iterator.empty
+    }
+  }
+
+  private def readConstructorArg(value: ConfigValue, forcedName: Option[String] = None) = value match {
     case ValueDefinition(obj) =>
       validateObj(required = Set(ValueAttr), allowed = Set(IndexAttr, TypeAttr, NameAttr))(obj)
       val vh = new ValueHolder(read(obj.get(ValueAttr)))
       obj.get(TypeAttr).as[Option[String]].foreach(vh.setType)
-      obj.get(NameAttr).as[Option[String]].foreach(vh.setName)
+      (forcedName orElse obj.get(NameAttr).as[Option[String]]).foreach(vh.setName)
       val indexOpt = obj.get(IndexAttr).as[Option[Int]]
       (indexOpt, vh)
     case _ =>
