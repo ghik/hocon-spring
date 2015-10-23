@@ -299,7 +299,9 @@ class HoconBeanDefinitionReader(registry: BeanDefinitionRegistry)
       val indexOpt = obj.get(IndexAttr).as[Option[Int]]
       (indexOpt, vh)
     case _ =>
-      (None, new ValueHolder(read(value)))
+      val vh = new ValueHolder(read(value))
+      forcedName.foreach(vh.setName)
+      (None, vh)
   }
 
   private def readPropertyValue(name: String, value: ConfigValue) = value match {
