@@ -1,6 +1,8 @@
 hocon-spring
 ============
 
+**NOTE: `hocon-spring` has been moved to [AVSystem commons library](https://github.com/AVSystem/scala-commons)**
+
 An implementation of [BeanDefinitionReader](http://docs.spring.io/spring/docs/4.0.2.RELEASE/javadoc-api/org/springframework/beans/factory/support/BeanDefinitionReader.html)
 that is able to parse [HOCON](https://github.com/typesafehub/config/blob/master/HOCON.md) (Typesafe Config) files.
 
